@@ -1,0 +1,8 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # Copy-in templates that reference the consuming app's dependencies
+    # (integration_test) — not part of this package's library code.
+    - scaffold/**
+

@@ -1,0 +1,21 @@
+name: firebase_kit
+description: "Reusable, state-management-agnostic Firebase building blocks for Flutter apps: an auth abstraction over firebase_auth and local-emulator wiring."
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_auth: ^6.5.4
+  cloud_firestore: ^6.6.0
+  google_sign_in: ^7.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  firebase_auth_mocks: ^0.15.2
