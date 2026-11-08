@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only network security config. Permits cleartext HTTP traffic to
+  127.0.0.1 and localhost (used via `adb reverse` on a USB-connected Android
+  device) and 10.0.2.2 (used by the Android emulator) so the app can reach the
+  local Firebase Emulator Suite, which does not serve TLS.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
