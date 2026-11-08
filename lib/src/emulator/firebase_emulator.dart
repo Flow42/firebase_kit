@@ -1,55 +1,114 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
-/// Host + ports for the Firebase Local Emulator Suite. Defaults match the ports
-/// in a stock `firebase.json` (`auth` 9099, `firestore` 8080).
+/// Settings for connecting to the Firebase Local Emulator Suite.
 ///
-/// The host defaults to `localhost`; when running against emulators from a
-/// physical device or a web build served on another interface, override it
-/// (e.g. via `--dart-define=FIREBASE_EMULATOR_HOST=10.0.2.2`).
-class FirebaseEmulatorConfig {
+/// Defaults match the stock ports in `firebase.json` (`auth` 9099,
+/// `firestore` 8080).
+///
+/// When [automaticHostMapping] is `true` (the default), FlutterFire rewrites
+/// `localhost` and `127.0.0.1` to `10.0.2.2` on Android so Android emulators
+/// reach the host machine. On a physical Android device using `adb reverse`,
+/// set [automaticHostMapping] to `false` (or pass
+/// `--dart-define=FIREBASE_EMULATOR_HOST_MAPPING=false`) so `127.0.0.1` is
+/// preserved.
+class EmulatorSettings {
+  final bool enabled;
   final String host;
   final int authPort;
   final int firestorePort;
+  final bool automaticHostMapping;
 
-  const FirebaseEmulatorConfig({
+  const EmulatorSettings({
+    this.enabled = true,
     this.host = 'localhost',
     this.authPort = 9099,
     this.firestorePort = 8080,
+    this.automaticHostMapping = true,
   });
 
-  /// Reads the host from the `FIREBASE_EMULATOR_HOST` compile-time environment
-  /// (`--dart-define`), falling back to [host].
-  factory FirebaseEmulatorConfig.fromEnvironment({
+  /// Disables emulator connection (for production builds).
+  const EmulatorSettings.disabled() : this(enabled: false);
+
+  /// Reads emulator settings from compile-time `--dart-define` variables:
+  /// - `USE_FIREBASE_EMULATOR` (default `true` — pass `false` in production!)
+  /// - `FIREBASE_EMULATOR_HOST` (default `'localhost'`)
+  /// - `FIREBASE_EMULATOR_HOST_MAPPING` (default `true`)
+  factory EmulatorSettings.fromEnvironment({
     int authPort = 9099,
     int firestorePort = 8080,
-  }) => FirebaseEmulatorConfig(
+  }) => EmulatorSettings(
+    enabled: const bool.fromEnvironment(
+      'USE_FIREBASE_EMULATOR',
+      defaultValue: true,
+    ),
     host: const String.fromEnvironment(
       'FIREBASE_EMULATOR_HOST',
       defaultValue: 'localhost',
+    ),
+    automaticHostMapping: const bool.fromEnvironment(
+      'FIREBASE_EMULATOR_HOST_MAPPING',
+      defaultValue: true,
     ),
     authPort: authPort,
     firestorePort: firestorePort,
   );
 }
 
-/// Points the default [FirebaseAuth] and [FirebaseFirestore] instances at the
-/// local emulator suite. Call once, after `Firebase.initializeApp`, before any
-/// auth/Firestore access.
+/// Backwards-compatible alias for [EmulatorSettings].
+typedef FirebaseEmulatorConfig = EmulatorSettings;
+
+bool _emulatorsConnected = false;
+
+/// Whether [connectToFirebaseEmulators] has already run in this Dart isolate.
+bool get areFirebaseEmulatorsConnected => _emulatorsConnected;
+
+/// Resets the once-per-process emulator guard. For unit tests only.
+@visibleForTesting
+void resetEmulatorConnectionStateForTesting() {
+  _emulatorsConnected = false;
+}
+
+/// Points [FirebaseAuth] and [FirebaseFirestore] at the local emulator suite
+/// at most once per process.
 ///
-/// Set [auth]/[firestore] to false to wire up only one product.
+/// Calling `useFirestoreEmulator` after Firestore has been used throws; a
+/// second call to [connectToFirebaseEmulators] in the same isolate is a
+/// safe no-op.
 Future<void> connectToFirebaseEmulators({
-  FirebaseEmulatorConfig config = const FirebaseEmulatorConfig(),
+  EmulatorSettings config = const EmulatorSettings(),
   bool auth = true,
   bool firestore = true,
+  FirebaseAuth? authInstance,
+  FirebaseFirestore? firestoreInstance,
 }) async {
+  if (!config.enabled || _emulatorsConnected) return;
+  _emulatorsConnected = true;
+
   if (auth) {
-    await FirebaseAuth.instance.useAuthEmulator(config.host, config.authPort);
+    await (authInstance ?? FirebaseAuth.instance).useAuthEmulator(
+      config.host,
+      config.authPort,
+      automaticHostMapping: config.automaticHostMapping,
+    );
   }
   if (firestore) {
-    FirebaseFirestore.instance.useFirestoreEmulator(
-      config.host,
-      config.firestorePort,
-    );
+    try {
+      (firestoreInstance ?? FirebaseFirestore.instance).useFirestoreEmulator(
+        config.host,
+        config.firestorePort,
+        automaticHostMapping: config.automaticHostMapping,
+      );
+    } catch (e) {
+      // On a Flutter hot restart, Dart static state resets while the native
+      // Firestore instance in the host OS process may already be running.
+      final msg = e.toString();
+      if (!msg.contains('already been started') &&
+          !msg.contains('failed-precondition') &&
+          !msg.contains('IllegalStateException')) {
+        rethrow;
+      }
+    }
   }
 }
