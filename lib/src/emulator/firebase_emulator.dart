@@ -23,15 +23,14 @@ class FirebaseEmulatorConfig {
   factory FirebaseEmulatorConfig.fromEnvironment({
     int authPort = 9099,
     int firestorePort = 8080,
-  }) =>
-      FirebaseEmulatorConfig(
-        host: const String.fromEnvironment(
-          'FIREBASE_EMULATOR_HOST',
-          defaultValue: 'localhost',
-        ),
-        authPort: authPort,
-        firestorePort: firestorePort,
-      );
+  }) => FirebaseEmulatorConfig(
+    host: const String.fromEnvironment(
+      'FIREBASE_EMULATOR_HOST',
+      defaultValue: 'localhost',
+    ),
+    authPort: authPort,
+    firestorePort: firestorePort,
+  );
 }
 
 /// Points the default [FirebaseAuth] and [FirebaseFirestore] instances at the
@@ -48,7 +47,9 @@ Future<void> connectToFirebaseEmulators({
     await FirebaseAuth.instance.useAuthEmulator(config.host, config.authPort);
   }
   if (firestore) {
-    FirebaseFirestore.instance
-        .useFirestoreEmulator(config.host, config.firestorePort);
+    FirebaseFirestore.instance.useFirestoreEmulator(
+      config.host,
+      config.firestorePort,
+    );
   }
 }

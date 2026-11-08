@@ -8,7 +8,7 @@ import 'auth_service.dart';
 /// injected so tests can pass a `MockFirebaseAuth` (from `firebase_auth_mocks`).
 class FirebaseAuthService implements AuthService {
   FirebaseAuthService({FirebaseAuth? auth})
-      : _auth = auth ?? FirebaseAuth.instance;
+    : _auth = auth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
 
@@ -23,65 +23,63 @@ class FirebaseAuthService implements AuthService {
   }
 
   @override
-  Stream<AuthUser?> authStateChanges() =>
-      _auth.authStateChanges().map(_map);
+  Stream<AuthUser?> authStateChanges() => _auth.authStateChanges().map(_map);
 
   @override
   AuthUser? get currentUser => _map(_auth.currentUser);
 
   @override
-  Future<AuthUser> signInAnonymously() =>
-      _run(() => _auth.signInAnonymously());
+  Future<AuthUser> signInAnonymously() => _run(() => _auth.signInAnonymously());
 
   @override
   Future<AuthUser> signUpWithEmail(String email, String password) => _run(
-        () => _auth.createUserWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        ),
-      );
+    () => _auth.createUserWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    ),
+  );
 
   @override
   Future<AuthUser> signInWithEmail(String email, String password) => _run(
-        () => _auth.signInWithEmailAndPassword(
-          email: email.trim(),
-          password: password,
-        ),
-      );
+    () => _auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    ),
+  );
 
   @override
   Future<AuthUser> signInWithGoogle() => _run(() async {
-        if (kIsWeb) {
-          // The Auth emulator serves a fake account picker for popups, so no
-          // real OAuth client id is required for local development.
-          return _auth.signInWithPopup(GoogleAuthProvider());
-        }
-        // Native platforms: obtain a Google id token, then exchange it with
-        // Firebase. Production mobile requires real OAuth client ids configured
-        // via `flutterfire configure`.
-        final signIn = GoogleSignIn.instance;
-        await signIn.initialize();
-        final account = await signIn.authenticate();
-        final idToken = account.authentication.idToken;
-        if (idToken == null) {
-          throw const AuthException('Google sign-in returned no credential.');
-        }
-        final credential = GoogleAuthProvider.credential(idToken: idToken);
-        return _auth.signInWithCredential(credential);
-      });
+    if (kIsWeb) {
+      // The Auth emulator serves a fake account picker for popups, so no
+      // real OAuth client id is required for local development.
+      return _auth.signInWithPopup(GoogleAuthProvider());
+    }
+    // Native platforms: obtain a Google id token, then exchange it with
+    // Firebase. Production mobile requires real OAuth client ids configured
+    // via `flutterfire configure`.
+    final signIn = GoogleSignIn.instance;
+    await signIn.initialize();
+    final account = await signIn.authenticate();
+    final idToken = account.authentication.idToken;
+    if (idToken == null) {
+      throw const AuthException('Google sign-in returned no credential.');
+    }
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
+    return _auth.signInWithCredential(credential);
+  });
 
   @override
   Future<AuthUser> linkEmail(String email, String password) => _run(() async {
-        final user = _auth.currentUser;
-        if (user == null) {
-          throw const AuthException('No account to upgrade. Sign in first.');
-        }
-        final credential = EmailAuthProvider.credential(
-          email: email.trim(),
-          password: password,
-        );
-        return user.linkWithCredential(credential);
-      });
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthException('No account to upgrade. Sign in first.');
+    }
+    final credential = EmailAuthProvider.credential(
+      email: email.trim(),
+      password: password,
+    );
+    return user.linkWithCredential(credential);
+  });
 
   @override
   Future<void> signOut() => _auth.signOut();
